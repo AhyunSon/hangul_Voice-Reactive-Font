@@ -1,0 +1,1315 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Voice-Reactive Typography</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #0a0a0a;
+      color: #ffffff;
+      font-family: 'Pretendard Variable', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ═══════════════════════════════════════
+       MAIN GLYPH DISPLAY AREA
+       ═══════════════════════════════════════ */
+    .glyph-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      pointer-events: none;
+    }
+
+    .glyph-svg {
+      overflow: visible;
+      pointer-events: none;
+    }
+
+    .glyph-text {
+      font-family: 'Pretendard Variable', sans-serif;
+      font-size: 400px;
+      fill: #ffffff;
+      dominant-baseline: central;
+      text-anchor: middle;
+      font-weight: 400;
+    }
+
+    /* ═══════════════════════════════════════
+       MIC BUTTON
+       ═══════════════════════════════════════ */
+    .mic-button {
+      position: fixed;
+      top: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      background: rgba(255, 255, 255, 0.1);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      color: #ffffff;
+      padding: 16px 32px;
+      font-size: 16px;
+      font-family: 'Pretendard Variable', sans-serif;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      pointer-events: auto;
+    }
+
+    .mic-button:hover {
+      background: rgba(255, 255, 255, 0.2);
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+
+    .mic-button.active {
+      background: rgba(255, 80, 80, 0.3);
+      border-color: #ff5050;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    .mic-button.error {
+      background: rgba(255, 165, 0, 0.2);
+      border-color: orange;
+    }
+
+    .mic-icon {
+      width: 24px;
+      height: 24px;
+    }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(255, 80, 80, 0.4); }
+      50% { box-shadow: 0 0 0 15px rgba(255, 80, 80, 0); }
+    }
+
+    /* ═══════════════════════════════════════
+       AUDIO VISUALIZER (debug)
+       ═══════════════════════════════════════ */
+    .audio-debug {
+      position: fixed;
+      top: 90px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9998;
+      display: flex;
+      gap: 24px;
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.5);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .debug-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .debug-value {
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    /* ═══════════════════════════════════════
+       SERVER INSTRUCTIONS
+       ═══════════════════════════════════════ */
+    .server-notice {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 10000;
+      background: rgba(0, 0, 0, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
+      padding: 32px;
+      max-width: 500px;
+      text-align: left;
+      display: none;
+    }
+
+    .server-notice h3 {
+      margin-bottom: 16px;
+      color: #ff9500;
+    }
+
+    .server-notice p {
+      margin-bottom: 12px;
+      line-height: 1.6;
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    .server-notice code {
+      display: block;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 12px;
+      border-radius: 6px;
+      margin: 12px 0;
+      font-family: monospace;
+      font-size: 14px;
+      color: #00ff88;
+    }
+
+    .server-notice button {
+      margin-top: 16px;
+      padding: 10px 20px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: white;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .server-notice button:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    /* ═══════════════════════════════════════
+       CONTROL PANEL
+       ═══════════════════════════════════════ */
+    .control-panel {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 9998;
+      background: rgba(20, 20, 20, 0.95);
+      backdrop-filter: blur(10px);
+      padding: 20px 32px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      max-height: 50vh;
+      overflow-y: auto;
+    }
+
+    .panel-section {
+      margin-bottom: 20px;
+    }
+
+    .panel-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      color: rgba(255, 255, 255, 0.4);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 16px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .control-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+      color: rgba(255, 255, 255, 0.6);
+      text-transform: uppercase;
+    }
+
+    .control-value {
+      color: #ffffff;
+      font-variant-numeric: tabular-nums;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      background: #ffffff;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: transform 0.1s ease;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      background: #ffffff;
+      border-radius: 50%;
+      cursor: pointer;
+      border: none;
+    }
+
+    /* Disabled state for sliders when audio is active */
+    input[type="range"].audio-controlled {
+      opacity: 0.5;
+    }
+
+    /* Character input */
+    .char-input {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #ffffff;
+      padding: 8px 12px;
+      font-size: 18px;
+      font-family: 'Pretendard Variable', sans-serif;
+      width: 80px;
+      text-align: center;
+      border-radius: 4px;
+    }
+
+    .char-input:focus {
+      outline: none;
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+
+    /* Mode toggle */
+    .mode-toggle {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .mode-toggle label {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 48px;
+      height: 24px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .toggle-switch.active {
+      background: rgba(255, 80, 80, 0.5);
+    }
+
+    .toggle-switch::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 20px;
+      height: 20px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.2s;
+    }
+
+    .toggle-switch.active::after {
+      transform: translateX(24px);
+    }
+
+    /* STT transcript display */
+    .transcript {
+      position: fixed;
+      bottom: 280px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9997;
+      font-size: 18px;
+      color: rgba(255, 255, 255, 0.4);
+      max-width: 600px;
+      text-align: center;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       SERVER NOTICE (shown when mic fails)
+       ═══════════════════════════════════════════════════════════════ -->
+  <div class="server-notice" id="server-notice">
+    <h3>🎤 마이크 사용을 위해 로컬 서버가 필요합니다</h3>
+    <p>브라우저 보안 정책으로 인해 마이크는 HTTPS 또는 localhost에서만 작동합니다.</p>
+    <p><strong>터미널에서 다음 명령어 중 하나를 실행하세요:</strong></p>
+    <code>npx serve .</code>
+    <code>python -m http.server 8000</code>
+    <code>php -S localhost:8000</code>
+    <p>그런 다음 <strong>http://localhost:포트번호/typographic-deformation.html</strong>로 접속하세요.</p>
+    <p style="margin-top: 16px; color: rgba(255,255,255,0.5);">마이크 없이도 아래 슬라이더로 수동 조작이 가능합니다.</p>
+    <button onclick="document.getElementById('server-notice').style.display='none'">닫기</button>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       MIC BUTTON
+       ═══════════════════════════════════════════════════════════════ -->
+  <button class="mic-button" id="mic-button">
+    <svg class="mic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+      <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+      <line x1="12" y1="19" x2="12" y2="23"/>
+      <line x1="8" y1="23" x2="16" y2="23"/>
+    </svg>
+    <span id="mic-button-text">마이크 시작</span>
+  </button>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       AUDIO DEBUG INFO
+       ═══════════════════════════════════════════════════════════════ -->
+  <div class="audio-debug" id="audio-debug" style="display: none;">
+    <div class="debug-item">
+      <span class="debug-value" id="debug-volume">0</span>
+      <span>Volume</span>
+    </div>
+    <div class="debug-item">
+      <span class="debug-value" id="debug-pitch">0 Hz</span>
+      <span>Pitch</span>
+    </div>
+    <div class="debug-item">
+      <span class="debug-value" id="debug-tremor">0</span>
+      <span>Tremor</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       GLYPH DISPLAY
+       ═══════════════════════════════════════════════════════════════ -->
+  <div class="glyph-container">
+    <svg class="glyph-svg" width="100%" height="100%" viewBox="-400 -300 800 600">
+      <defs>
+        <filter id="glyph-deform" x="-50%" y="-50%" width="200%" height="200%">
+          <feTurbulence
+            id="turbulence-primary"
+            type="fractalNoise"
+            baseFrequency="0.015 0.012"
+            numOctaves="3"
+            seed="0"
+            result="noise1"
+          />
+          <feTurbulence
+            id="turbulence-secondary"
+            type="fractalNoise"
+            baseFrequency="0.04 0.035"
+            numOctaves="2"
+            seed="100"
+            result="noise2"
+          />
+          <feBlend in="noise1" in2="noise2" mode="overlay" result="combinedNoise"/>
+          <feDisplacementMap
+            id="displacement"
+            in="SourceGraphic"
+            in2="combinedNoise"
+            scale="0"
+            xChannelSelector="R"
+            yChannelSelector="G"
+          />
+        </filter>
+      </defs>
+
+      <g id="glyph-group" filter="url(#glyph-deform)">
+        <text
+          id="glyph-text"
+          class="glyph-text"
+          x="0"
+          y="0"
+        >아</text>
+      </g>
+    </svg>
+  </div>
+
+  <!-- Transcript display -->
+  <div class="transcript" id="transcript"></div>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       CONTROL PANEL
+       ═══════════════════════════════════════════════════════════════ -->
+  <div class="control-panel">
+
+    <!-- MANUAL DEFORMATION CONTROLS -->
+    <div class="panel-section">
+      <div class="section-title">수동 변형 조절 (Manual Controls)</div>
+      <div class="controls-grid">
+
+        <!-- Character Selection -->
+        <div class="control-group">
+          <label class="control-label">
+            <span>Character</span>
+          </label>
+          <input
+            type="text"
+            id="char-input"
+            class="char-input"
+            value="아"
+            maxlength="4"
+          />
+        </div>
+
+        <!-- Weight -->
+        <div class="control-group">
+          <label class="control-label">
+            <span>Weight</span>
+            <span class="control-value" id="weight-value">400</span>
+          </label>
+          <input
+            type="range"
+            id="weight"
+            min="100"
+            max="900"
+            value="400"
+            step="1"
+          />
+        </div>
+
+        <!-- Scale X -->
+        <div class="control-group">
+          <label class="control-label">
+            <span>Scale X (평)</span>
+            <span class="control-value" id="scaleX-value">1.00</span>
+          </label>
+          <input
+            type="range"
+            id="scaleX"
+            min="0.5"
+            max="1.5"
+            value="1"
+            step="0.01"
+          />
+        </div>
+
+        <!-- Scale Y -->
+        <div class="control-group">
+          <label class="control-label">
+            <span>Scale Y (장)</span>
+            <span class="control-value" id="scaleY-value">1.00</span>
+          </label>
+          <input
+            type="range"
+            id="scaleY"
+            min="0.5"
+            max="1.5"
+            value="1"
+            step="0.01"
+          />
+        </div>
+
+        <!-- Tremor Amount -->
+        <div class="control-group">
+          <label class="control-label">
+            <span>Tremor Amount</span>
+            <span class="control-value" id="tremorAmount-value">0.00</span>
+          </label>
+          <input
+            type="range"
+            id="tremorAmount"
+            min="0"
+            max="1"
+            value="0"
+            step="0.01"
+          />
+        </div>
+
+        <!-- Tremor Speed -->
+        <div class="control-group">
+          <label class="control-label">
+            <span>Tremor Speed</span>
+            <span class="control-value" id="tremorSpeed-value">1.50</span>
+          </label>
+          <input
+            type="range"
+            id="tremorSpeed"
+            min="0"
+            max="3"
+            value="1.5"
+            step="0.01"
+          />
+        </div>
+
+      </div>
+    </div>
+
+    <!-- AUDIO SETTINGS -->
+    <div class="panel-section">
+      <div class="section-title">음성 반응 설정 (Audio Settings)</div>
+      <div class="controls-grid">
+
+        <!-- Volume Sensitivity -->
+        <div class="control-group">
+          <label class="control-label">
+            <span>Volume Sens.</span>
+            <span class="control-value" id="volSens-value">1.50</span>
+          </label>
+          <input
+            type="range"
+            id="volSens"
+            min="0.5"
+            max="5"
+            value="1.5"
+            step="0.1"
+          />
+        </div>
+
+        <!-- Pitch Sensitivity -->
+        <div class="control-group">
+          <label class="control-label">
+            <span>Pitch Sens.</span>
+            <span class="control-value" id="pitchSens-value">1.00</span>
+          </label>
+          <input
+            type="range"
+            id="pitchSens"
+            min="0.5"
+            max="3"
+            value="1"
+            step="0.1"
+          />
+        </div>
+
+        <!-- Tremor Sensitivity -->
+        <div class="control-group">
+          <label class="control-label">
+            <span>Tremor Sens.</span>
+            <span class="control-value" id="tremorSens-value">1.00</span>
+          </label>
+          <input
+            type="range"
+            id="tremorSens"
+            min="0.5"
+            max="3"
+            value="1"
+            step="0.1"
+          />
+        </div>
+
+        <!-- Smoothing -->
+        <div class="control-group">
+          <label class="control-label">
+            <span>Smoothing</span>
+            <span class="control-value" id="smoothing-value">0.80</span>
+          </label>
+          <input
+            type="range"
+            id="smoothing"
+            min="0.5"
+            max="0.98"
+            value="0.80"
+            step="0.01"
+          />
+        </div>
+
+        <!-- Pitch Center -->
+        <div class="control-group">
+          <label class="control-label">
+            <span>Pitch Center (Hz)</span>
+            <span class="control-value" id="pitchCenter-value">180</span>
+          </label>
+          <input
+            type="range"
+            id="pitchCenter"
+            min="80"
+            max="400"
+            value="180"
+            step="10"
+          />
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       JAVASCRIPT
+       ═══════════════════════════════════════════════════════════════ -->
+  <script>
+    /**
+     * ═══════════════════════════════════════════════════════════════
+     * STATE
+     * ═══════════════════════════════════════════════════════════════
+     */
+    const state = {
+      character: '아',
+      weight: 400,
+      scaleX: 1,
+      scaleY: 1,
+      tremorAmount: 0,
+      tremorSpeed: 1.5,
+
+      // Audio analysis results (raw)
+      rawVolume: 0,
+      rawPitch: 0,
+      rawTremor: 0,
+
+      // Smoothed values
+      smoothedVolume: 0,
+      smoothedPitch: 180,
+      smoothedTremor: 0,
+
+      // Settings
+      volumeSensitivity: 1.5,
+      pitchSensitivity: 1,
+      tremorSensitivity: 1,
+      smoothing: 0.80,
+      pitchCenter: 180,
+
+      // Audio state
+      isListening: false,
+    };
+
+    /**
+     * ═══════════════════════════════════════════════════════════════
+     * AUDIO CONTEXT & NODES
+     * ═══════════════════════════════════════════════════════════════
+     */
+    let audioContext = null;
+    let analyser = null;
+    let microphone = null;
+    let dataArray = null;
+    let frequencyArray = null;
+
+    const pitchHistory = [];
+    const PITCH_HISTORY_SIZE = 15;
+
+    /**
+     * ═══════════════════════════════════════════════════════════════
+     * NOISE GENERATOR
+     * ═══════════════════════════════════════════════════════════════
+     */
+    class OrganicNoise {
+      constructor() {
+        this.frequencies = [1.0, Math.PI / 2, Math.E / 3, Math.sqrt(2), Math.sqrt(3) / 2, (1 + Math.sqrt(5)) / 2];
+        this.phases = this.frequencies.map(() => Math.random() * Math.PI * 2);
+      }
+
+      getValue(t, offset = 0) {
+        let sum = 0;
+        let amplitude = 1;
+        let totalAmplitude = 0;
+        for (let i = 0; i < this.frequencies.length; i++) {
+          sum += Math.sin(t * this.frequencies[i] + this.phases[i] + offset) * amplitude;
+          totalAmplitude += amplitude;
+          amplitude *= 0.6;
+        }
+        return sum / totalAmplitude;
+      }
+
+      getVector(t) {
+        return { x: this.getValue(t, 0), y: this.getValue(t, Math.PI / 3) };
+      }
+    }
+
+    const noiseGenerators = {
+      seed: new OrganicNoise(),
+      frequency: new OrganicNoise(),
+      secondary: new OrganicNoise()
+    };
+
+    /**
+     * ═══════════════════════════════════════════════════════════════
+     * DOM REFERENCES
+     * ═══════════════════════════════════════════════════════════════
+     */
+    const elements = {
+      glyphText: document.getElementById('glyph-text'),
+      glyphGroup: document.getElementById('glyph-group'),
+      turbulencePrimary: document.getElementById('turbulence-primary'),
+      turbulenceSecondary: document.getElementById('turbulence-secondary'),
+      displacement: document.getElementById('displacement'),
+      charInput: document.getElementById('char-input'),
+      micButton: document.getElementById('mic-button'),
+      micButtonText: document.getElementById('mic-button-text'),
+      audioDebug: document.getElementById('audio-debug'),
+      debugVolume: document.getElementById('debug-volume'),
+      debugPitch: document.getElementById('debug-pitch'),
+      debugTremor: document.getElementById('debug-tremor'),
+      transcript: document.getElementById('transcript'),
+      serverNotice: document.getElementById('server-notice'),
+    };
+
+    // Manual control sliders
+    const manualSliders = {
+      weight: document.getElementById('weight'),
+      scaleX: document.getElementById('scaleX'),
+      scaleY: document.getElementById('scaleY'),
+      tremorAmount: document.getElementById('tremorAmount'),
+      tremorSpeed: document.getElementById('tremorSpeed'),
+    };
+
+    /**
+     * ═══════════════════════════════════════════════════════════════
+     * SPEECH RECOGNITION (STT)
+     * ═══════════════════════════════════════════════════════════════
+     */
+    let recognition = null;
+
+    function setupSpeechRecognition() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+      if (!SpeechRecognition) {
+        console.warn('Speech Recognition not supported');
+        return;
+      }
+
+      recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'ko-KR';
+
+      recognition.onresult = (event) => {
+        let finalTranscript = '';
+        let interimTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript;
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+
+        const allText = finalTranscript || interimTranscript;
+        if (allText.length > 0) {
+          const lastChar = allText.slice(-1);
+          state.character = lastChar;
+          elements.glyphText.textContent = lastChar;
+          elements.charInput.value = lastChar;
+          elements.transcript.textContent = allText.slice(-30);
+        }
+      };
+
+      recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+      };
+
+      recognition.onend = () => {
+        if (state.isListening) {
+          try {
+            recognition.start();
+          } catch (e) {
+            console.log('Recognition restart failed:', e);
+          }
+        }
+      };
+    }
+
+    /**
+     * ═══════════════════════════════════════════════════════════════
+     * AUDIO ANALYSIS
+     * ═══════════════════════════════════════════════════════════════
+     */
+
+    // Store stream separately for cleanup
+    let mediaStream = null;
+
+    async function startAudio() {
+      try {
+        console.log('Starting audio...');
+        console.log('isSecureContext:', window.isSecureContext);
+        console.log('mediaDevices available:', !!navigator.mediaDevices);
+
+        // Check if we're in a secure context
+        if (!window.isSecureContext) {
+          console.warn('Not in secure context');
+          elements.serverNotice.style.display = 'block';
+          return false;
+        }
+
+        // Check if mediaDevices is available
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          console.error('getUserMedia not supported');
+          alert('이 브라우저는 마이크를 지원하지 않습니다.');
+          return false;
+        }
+
+        console.log('Requesting microphone access...');
+
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          audio: true
+        });
+
+        console.log('Microphone access granted');
+
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        console.log('AudioContext created, state:', audioContext.state);
+
+        // Resume audio context if suspended
+        if (audioContext.state === 'suspended') {
+          await audioContext.resume();
+          console.log('AudioContext resumed');
+        }
+
+        microphone = audioContext.createMediaStreamSource(mediaStream);
+
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 2048;
+        analyser.smoothingTimeConstant = 0.3;
+
+        microphone.connect(analyser);
+
+        dataArray = new Float32Array(analyser.fftSize);
+        frequencyArray = new Uint8Array(analyser.frequencyBinCount);
+
+        console.log('Audio started successfully');
+        return true;
+      } catch (err) {
+        console.error('Error accessing microphone:', err);
+        console.error('Error name:', err.name);
+        console.error('Error message:', err.message);
+
+        // Show specific error message
+        let errorMsg = '마이크 오류';
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          errorMsg = '마이크 권한 거부됨';
+          alert('마이크 권한을 허용해주세요.\n브라우저 주소창 왼쪽의 자물쇠/정보 아이콘을 클릭하여 마이크 권한을 허용할 수 있습니다.');
+        } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+          errorMsg = '마이크 없음';
+          alert('마이크를 찾을 수 없습니다.\n마이크가 연결되어 있는지 확인해주세요.');
+        } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+          errorMsg = '마이크 사용 중';
+          alert('마이크가 다른 앱에서 사용 중입니다.\n다른 앱을 종료하고 다시 시도해주세요.');
+        } else {
+          alert('마이크 오류: ' + err.message);
+        }
+
+        elements.micButton.classList.add('error');
+        elements.micButtonText.textContent = errorMsg;
+        return false;
+      }
+    }
+
+    function stopAudio() {
+      if (mediaStream) {
+        mediaStream.getTracks().forEach(track => track.stop());
+        mediaStream = null;
+      }
+      if (audioContext) {
+        audioContext.close();
+        audioContext = null;
+      }
+      microphone = null;
+      analyser = null;
+    }
+
+    function calculateVolume() {
+      if (!analyser || !dataArray) return 0;
+
+      analyser.getFloatTimeDomainData(dataArray);
+
+      let sum = 0;
+      for (let i = 0; i < dataArray.length; i++) {
+        sum += dataArray[i] * dataArray[i];
+      }
+
+      const rms = Math.sqrt(sum / dataArray.length);
+      return Math.min(1, rms * 5);
+    }
+
+    function detectPitch() {
+      if (!analyser || !dataArray) return 0;
+
+      analyser.getFloatTimeDomainData(dataArray);
+
+      const sampleRate = audioContext.sampleRate;
+      const bufferSize = dataArray.length;
+
+      let maxCorrelation = 0;
+      let foundPitch = 0;
+
+      const minPeriod = Math.floor(sampleRate / 500);
+      const maxPeriod = Math.floor(sampleRate / 80);
+
+      for (let lag = minPeriod; lag < maxPeriod && lag < bufferSize / 2; lag++) {
+        let correlation = 0;
+
+        for (let i = 0; i < bufferSize - lag; i++) {
+          correlation += dataArray[i] * dataArray[i + lag];
+        }
+
+        if (correlation > maxCorrelation) {
+          maxCorrelation = correlation;
+          foundPitch = sampleRate / lag;
+        }
+      }
+
+      const threshold = 0.01;
+      if (maxCorrelation > threshold * bufferSize) {
+        return foundPitch;
+      }
+
+      return 0;
+    }
+
+    function calculateTremor(currentPitch) {
+      if (currentPitch <= 0) return state.smoothedTremor * 0.9;
+
+      pitchHistory.push(currentPitch);
+      if (pitchHistory.length > PITCH_HISTORY_SIZE) {
+        pitchHistory.shift();
+      }
+
+      if (pitchHistory.length < 5) return 0;
+
+      const mean = pitchHistory.reduce((a, b) => a + b, 0) / pitchHistory.length;
+      const variance = pitchHistory.reduce((sum, p) => sum + Math.pow(p - mean, 2), 0) / pitchHistory.length;
+      const stdDev = Math.sqrt(variance);
+
+      const normalizedTremor = Math.min(1, stdDev / 30);
+
+      return normalizedTremor;
+    }
+
+    /**
+     * ═══════════════════════════════════════════════════════════════
+     * MAPPING FUNCTIONS
+     * ═══════════════════════════════════════════════════════════════
+     */
+
+    function mapRange(value, inMin, inMax, outMin, outMax) {
+      return outMin + (outMax - outMin) * ((value - inMin) / (inMax - inMin));
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function mapAudioToDeformation() {
+      const volume = state.smoothedVolume;
+      const pitch = state.smoothedPitch;
+      const tremor = state.smoothedTremor;
+      const pitchCenter = state.pitchCenter;
+
+      // Volume → Weight
+      const weightFromVolume = mapRange(
+        volume * state.volumeSensitivity,
+        0, 1,
+        200, 900
+      );
+      state.weight = clamp(weightFromVolume, 100, 900);
+
+      // Pitch → Scale
+      const pitchDeviation = (pitch - pitchCenter) / pitchCenter;
+      const scaledDeviation = pitchDeviation * state.pitchSensitivity;
+
+      if (pitch > 0 && volume > 0.05) {
+        if (scaledDeviation > 0) {
+          state.scaleY = 1 + scaledDeviation * 0.5;
+          state.scaleX = 1 - scaledDeviation * 0.2;
+        } else {
+          state.scaleX = 1 - scaledDeviation * 0.5;
+          state.scaleY = 1 + scaledDeviation * 0.2;
+        }
+      } else {
+        state.scaleX = state.scaleX * 0.95 + 1 * 0.05;
+        state.scaleY = state.scaleY * 0.95 + 1 * 0.05;
+      }
+
+      state.scaleX = clamp(state.scaleX, 0.5, 1.5);
+      state.scaleY = clamp(state.scaleY, 0.5, 1.5);
+
+      // Tremor
+      state.tremorAmount = clamp(tremor * state.tremorSensitivity * 1.5, 0, 1);
+
+      // Update manual sliders to reflect current values
+      updateManualSlidersFromState();
+    }
+
+    /**
+     * ═══════════════════════════════════════════════════════════════
+     * UPDATE FUNCTIONS
+     * ═══════════════════════════════════════════════════════════════
+     */
+
+    function updateWeight() {
+      elements.glyphText.style.fontWeight = Math.round(state.weight);
+    }
+
+    function updateScale() {
+      elements.glyphText.setAttribute(
+        'transform',
+        `scale(${state.scaleX.toFixed(3)}, ${state.scaleY.toFixed(3)})`
+      );
+    }
+
+    function updateCharacter() {
+      elements.glyphText.textContent = state.character;
+    }
+
+    function updateDebugDisplay() {
+      elements.debugVolume.textContent = state.smoothedVolume.toFixed(2);
+      elements.debugPitch.textContent = state.smoothedPitch.toFixed(0) + ' Hz';
+      elements.debugTremor.textContent = state.smoothedTremor.toFixed(2);
+    }
+
+    function updateManualSlidersFromState() {
+      manualSliders.weight.value = state.weight;
+      document.getElementById('weight-value').textContent = Math.round(state.weight);
+
+      manualSliders.scaleX.value = state.scaleX;
+      document.getElementById('scaleX-value').textContent = state.scaleX.toFixed(2);
+
+      manualSliders.scaleY.value = state.scaleY;
+      document.getElementById('scaleY-value').textContent = state.scaleY.toFixed(2);
+
+      manualSliders.tremorAmount.value = state.tremorAmount;
+      document.getElementById('tremorAmount-value').textContent = state.tremorAmount.toFixed(2);
+    }
+
+    /**
+     * ═══════════════════════════════════════════════════════════════
+     * ANIMATION LOOP
+     * ═══════════════════════════════════════════════════════════════
+     */
+    let animationTime = 0;
+    let lastTimestamp = 0;
+
+    function animate(timestamp) {
+      const deltaTime = lastTimestamp ? (timestamp - lastTimestamp) / 1000 : 0;
+      lastTimestamp = timestamp;
+      animationTime += deltaTime * state.tremorSpeed;
+
+      // Audio analysis (only when listening)
+      if (state.isListening && analyser) {
+        state.rawVolume = calculateVolume();
+        state.rawPitch = detectPitch();
+        state.rawTremor = calculateTremor(state.rawPitch);
+
+        const s = state.smoothing;
+        state.smoothedVolume = state.smoothedVolume * s + state.rawVolume * (1 - s);
+
+        if (state.rawPitch > 0) {
+          state.smoothedPitch = state.smoothedPitch * s + state.rawPitch * (1 - s);
+        }
+
+        state.smoothedTremor = state.smoothedTremor * s + state.rawTremor * (1 - s);
+
+        mapAudioToDeformation();
+        updateDebugDisplay();
+      }
+
+      // Always update visuals
+      updateWeight();
+      updateScale();
+
+      // Tremor animation
+      if (state.tremorAmount > 0.01) {
+        updateTremor(animationTime);
+      } else {
+        elements.displacement.setAttribute('scale', '0');
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    function updateTremor(t) {
+      const maxDisplacement = 40;
+      const baseDisplacement = state.tremorAmount * maxDisplacement;
+      const displacementNoise = noiseGenerators.seed.getValue(t * 2);
+      const displacement = baseDisplacement * (0.7 + 0.3 * displacementNoise);
+
+      elements.displacement.setAttribute('scale', displacement.toFixed(2));
+
+      const seedValue = Math.floor((noiseGenerators.seed.getValue(t * 0.7) + 1) * 5000);
+      elements.turbulencePrimary.setAttribute('seed', seedValue);
+
+      const secondarySeed = Math.floor((noiseGenerators.secondary.getValue(t * 0.5 + 100) + 1) * 5000);
+      elements.turbulenceSecondary.setAttribute('seed', secondarySeed);
+
+      const freqNoise = noiseGenerators.frequency.getVector(t * 0.3);
+      const baseFreqX = 0.015 + freqNoise.x * 0.005 * state.tremorAmount;
+      const baseFreqY = 0.012 + freqNoise.y * 0.004 * state.tremorAmount;
+      elements.turbulencePrimary.setAttribute('baseFrequency', `${baseFreqX.toFixed(4)} ${baseFreqY.toFixed(4)}`);
+    }
+
+    /**
+     * ═══════════════════════════════════════════════════════════════
+     * EVENT LISTENERS
+     * ═══════════════════════════════════════════════════════════════
+     */
+
+    async function toggleMicrophone() {
+      if (state.isListening) {
+        // Stop
+        state.isListening = false;
+        elements.micButton.classList.remove('active');
+        elements.micButton.classList.remove('error');
+        elements.micButtonText.textContent = '마이크 시작';
+        elements.audioDebug.style.display = 'none';
+
+        // Re-enable manual sliders
+        Object.values(manualSliders).forEach(slider => {
+          slider.classList.remove('audio-controlled');
+          slider.disabled = false;
+        });
+
+        if (recognition) {
+          recognition.stop();
+        }
+        stopAudio();
+      } else {
+        // Start
+        const success = await startAudio();
+        if (success) {
+          state.isListening = true;
+          elements.micButton.classList.add('active');
+          elements.micButton.classList.remove('error');
+          elements.micButtonText.textContent = '마이크 중지';
+          elements.audioDebug.style.display = 'flex';
+
+          // Disable manual sliders (except tremorSpeed)
+          ['weight', 'scaleX', 'scaleY', 'tremorAmount'].forEach(key => {
+            manualSliders[key].classList.add('audio-controlled');
+          });
+
+          if (recognition) {
+            try {
+              recognition.start();
+            } catch (e) {
+              console.log('Recognition already started');
+            }
+          }
+        }
+      }
+    }
+
+    function setupEventListeners() {
+      // Mic button
+      elements.micButton.addEventListener('click', toggleMicrophone);
+
+      // Character input
+      elements.charInput.addEventListener('input', (e) => {
+        state.character = e.target.value || '아';
+        updateCharacter();
+      });
+
+      // Manual control sliders
+      manualSliders.weight.addEventListener('input', (e) => {
+        if (!state.isListening) {
+          state.weight = parseInt(e.target.value);
+          document.getElementById('weight-value').textContent = state.weight;
+        }
+      });
+
+      manualSliders.scaleX.addEventListener('input', (e) => {
+        if (!state.isListening) {
+          state.scaleX = parseFloat(e.target.value);
+          document.getElementById('scaleX-value').textContent = state.scaleX.toFixed(2);
+        }
+      });
+
+      manualSliders.scaleY.addEventListener('input', (e) => {
+        if (!state.isListening) {
+          state.scaleY = parseFloat(e.target.value);
+          document.getElementById('scaleY-value').textContent = state.scaleY.toFixed(2);
+        }
+      });
+
+      manualSliders.tremorAmount.addEventListener('input', (e) => {
+        if (!state.isListening) {
+          state.tremorAmount = parseFloat(e.target.value);
+          document.getElementById('tremorAmount-value').textContent = state.tremorAmount.toFixed(2);
+        }
+      });
+
+      manualSliders.tremorSpeed.addEventListener('input', (e) => {
+        state.tremorSpeed = parseFloat(e.target.value);
+        document.getElementById('tremorSpeed-value').textContent = state.tremorSpeed.toFixed(2);
+      });
+
+      // Audio sensitivity sliders
+      document.getElementById('volSens').addEventListener('input', (e) => {
+        state.volumeSensitivity = parseFloat(e.target.value);
+        document.getElementById('volSens-value').textContent = state.volumeSensitivity.toFixed(2);
+      });
+
+      document.getElementById('pitchSens').addEventListener('input', (e) => {
+        state.pitchSensitivity = parseFloat(e.target.value);
+        document.getElementById('pitchSens-value').textContent = state.pitchSensitivity.toFixed(2);
+      });
+
+      document.getElementById('tremorSens').addEventListener('input', (e) => {
+        state.tremorSensitivity = parseFloat(e.target.value);
+        document.getElementById('tremorSens-value').textContent = state.tremorSensitivity.toFixed(2);
+      });
+
+      document.getElementById('smoothing').addEventListener('input', (e) => {
+        state.smoothing = parseFloat(e.target.value);
+        document.getElementById('smoothing-value').textContent = state.smoothing.toFixed(2);
+      });
+
+      document.getElementById('pitchCenter').addEventListener('input', (e) => {
+        state.pitchCenter = parseFloat(e.target.value);
+        document.getElementById('pitchCenter-value').textContent = state.pitchCenter.toFixed(0);
+      });
+    }
+
+    /**
+     * ═══════════════════════════════════════════════════════════════
+     * INITIALIZATION
+     * ═══════════════════════════════════════════════════════════════
+     */
+
+    function init() {
+      setupEventListeners();
+      setupSpeechRecognition();
+      updateCharacter();
+
+      document.fonts.ready.then(() => {
+        console.log('Fonts loaded');
+        updateWeight();
+        updateScale();
+        requestAnimationFrame(animate);
+      });
+
+      console.log('Voice-Reactive Typography initialized.');
+      console.log('Manual controls available. Click mic button to enable audio reactivity.');
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+  </script>
+
+</body>
+</html>
