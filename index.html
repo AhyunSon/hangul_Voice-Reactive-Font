@@ -348,19 +348,42 @@
       transform: translateX(24px);
     }
 
-    /* STT transcript display */
-    .transcript {
-      position: fixed;
-      bottom: 280px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 9997;
-      font-size: 18px;
-      color: rgba(255, 255, 255, 0.4);
-      max-width: 600px;
-      text-align: center;
-      pointer-events: none;
+    /* Pitch mode selector */
+    .mode-selector {
+      display: flex;
+      gap: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      padding: 4px;
     }
+
+    .mode-btn {
+      padding: 8px 16px;
+      border: none;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 12px;
+      font-family: 'Pretendard Variable', sans-serif;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .mode-btn.active {
+      background: rgba(255, 255, 255, 0.2);
+      color: #ffffff;
+    }
+
+    .mode-btn:hover:not(.active) {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .mode-description {
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.4);
+      margin-top: 4px;
+    }
+
   </style>
 </head>
 <body>
@@ -375,7 +398,7 @@
     <code>npx serve .</code>
     <code>python -m http.server 8000</code>
     <code>php -S localhost:8000</code>
-    <p>그런 다음 <strong>http://localhost:포트번호/typographic-deformation.html</strong>로 접속하세요.</p>
+    <p>그런 다음 <strong>http://localhost:포트번호/index.html</strong>로 접속하세요.</p>
     <p style="margin-top: 16px; color: rgba(255,255,255,0.5);">마이크 없이도 아래 슬라이더로 수동 조작이 가능합니다.</p>
     <button onclick="document.getElementById('server-notice').style.display='none'">닫기</button>
   </div>
@@ -404,6 +427,10 @@
     <div class="debug-item">
       <span class="debug-value" id="debug-pitch">0 Hz</span>
       <span>Pitch</span>
+    </div>
+    <div class="debug-item">
+      <span class="debug-value" id="debug-center">180 Hz</span>
+      <span>Center</span>
     </div>
     <div class="debug-item">
       <span class="debug-value" id="debug-tremor">0</span>
@@ -457,8 +484,6 @@
     </svg>
   </div>
 
-  <!-- Transcript display -->
-  <div class="transcript" id="transcript"></div>
 
   <!-- ═══════════════════════════════════════════════════════════════
        CONTROL PANEL
@@ -564,6 +589,24 @@
           />
         </div>
 
+      </div>
+    </div>
+
+    <!-- PITCH MODE SELECTOR -->
+    <div class="panel-section">
+      <div class="section-title">피치 모드 (Pitch Mode)</div>
+      <div class="control-group">
+        <div class="mode-selector">
+          <button class="mode-btn active" id="mode-adaptive" data-mode="adaptive">
+            적응형 (Adaptive)
+          </button>
+          <button class="mode-btn" id="mode-absolute" data-mode="absolute">
+            절대 음역 (Absolute)
+          </button>
+        </div>
+        <div class="mode-description" id="mode-description">
+          처음 3초간 목소리를 분석하여 개인 기준점을 설정합니다.
+        </div>
       </div>
     </div>
 
@@ -684,6 +727,9 @@
       smoothedPitch: 180,
       smoothedTremor: 0,
 
+      // Color (RGB)
+      color: { r: 255, g: 255, b: 255 },
+
       // Settings
       volumeSensitivity: 1.5,
       pitchSensitivity: 1,
@@ -693,6 +739,17 @@
 
       // Audio state
       isListening: false,
+
+      // Pitch mode: 'adaptive' (개인 적응형) or 'absolute' (절대 음역대)
+      pitchMode: 'adaptive',
+
+      // Adaptive mode variables
+      adaptiveCenter: 180,
+      calibrationTime: 0,
+      isCalibrated: false,
+
+      // Absolute mode range (인간 음역대)
+      absoluteRange: { min: 80, max: 400 },
     };
 
     /**
@@ -760,9 +817,12 @@
       audioDebug: document.getElementById('audio-debug'),
       debugVolume: document.getElementById('debug-volume'),
       debugPitch: document.getElementById('debug-pitch'),
+      debugCenter: document.getElementById('debug-center'),
       debugTremor: document.getElementById('debug-tremor'),
-      transcript: document.getElementById('transcript'),
       serverNotice: document.getElementById('server-notice'),
+      modeAdaptive: document.getElementById('mode-adaptive'),
+      modeAbsolute: document.getElementById('mode-absolute'),
+      modeDescription: document.getElementById('mode-description'),
     };
 
     // Manual control sliders
@@ -780,6 +840,28 @@
      * ═══════════════════════════════════════════════════════════════
      */
     let recognition = null;
+
+    /**
+     * 한글 음절에서 모음만 추출하여 'ㅇ' + 모음 형태로 반환
+     * 예: '가' → '아', '고' → '오', '한' → '아'
+     */
+    function extractVowel(char) {
+      const code = char.charCodeAt(0);
+
+      // 한글 음절 범위 확인 (가-힣)
+      if (code < 0xAC00 || code > 0xD7A3) {
+        return char; // 한글 음절이 아니면 그대로 반환
+      }
+
+      // 중성(모음) 인덱스 추출
+      const syllableIndex = code - 0xAC00;
+      const jungseongIndex = Math.floor(syllableIndex / 28) % 21;
+
+      // ㅇ(초성 인덱스 11) + 추출한 모음 + 종성 없음으로 새 음절 생성
+      const vowelSyllable = 0xAC00 + (11 * 588) + (jungseongIndex * 28);
+
+      return String.fromCharCode(vowelSyllable);
+    }
 
     function setupSpeechRecognition() {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -810,10 +892,10 @@
         const allText = finalTranscript || interimTranscript;
         if (allText.length > 0) {
           const lastChar = allText.slice(-1);
-          state.character = lastChar;
-          elements.glyphText.textContent = lastChar;
-          elements.charInput.value = lastChar;
-          elements.transcript.textContent = allText.slice(-30);
+          const vowelChar = extractVowel(lastChar);
+          state.character = vowelChar;
+          elements.glyphText.textContent = vowelChar;
+          elements.charInput.value = vowelChar;
         }
       };
 
@@ -993,7 +1075,13 @@
       const variance = pitchHistory.reduce((sum, p) => sum + Math.pow(p - mean, 2), 0) / pitchHistory.length;
       const stdDev = Math.sqrt(variance);
 
-      const normalizedTremor = Math.min(1, stdDev / 30);
+      // 일반 발성의 피치 변동은 무시하고 바이브레이션만 감지
+      // 표준편차 15Hz 이하는 일반 발성으로 간주하여 무시
+      const threshold = 15;
+      if (stdDev < threshold) return 0;
+
+      // 15~60Hz 범위를 0~1로 매핑
+      const normalizedTremor = Math.min(1, (stdDev - threshold) / 45);
 
       return normalizedTremor;
     }
@@ -1012,11 +1100,10 @@
       return Math.max(min, Math.min(max, value));
     }
 
-    function mapAudioToDeformation() {
+    function mapAudioToDeformation(deltaTime) {
       const volume = state.smoothedVolume;
       const pitch = state.smoothedPitch;
       const tremor = state.smoothedTremor;
-      const pitchCenter = state.pitchCenter;
 
       // Volume → Weight
       const weightFromVolume = mapRange(
@@ -1026,8 +1113,39 @@
       );
       state.weight = clamp(weightFromVolume, 100, 900);
 
-      // Pitch → Scale
-      const pitchDeviation = (pitch - pitchCenter) / pitchCenter;
+      // Calculate pitch deviation based on mode
+      let pitchDeviation = 0;
+
+      if (state.pitchMode === 'adaptive') {
+        // === ADAPTIVE MODE ===
+        // Update calibration time when voice is detected
+        if (pitch > 0 && volume > 0.05) {
+          state.calibrationTime += deltaTime;
+
+          if (state.calibrationTime < 3) {
+            // Fast adaptation phase (first 3 seconds)
+            // Quickly find user's baseline
+            state.adaptiveCenter = state.adaptiveCenter * 0.85 + pitch * 0.15;
+          } else {
+            // Stable phase - very slow drift
+            state.adaptiveCenter = state.adaptiveCenter * 0.998 + pitch * 0.002;
+            state.isCalibrated = true;
+          }
+        }
+
+        pitchDeviation = (pitch - state.adaptiveCenter) / state.adaptiveCenter;
+
+      } else {
+        // === ABSOLUTE MODE ===
+        // Fixed human vocal range: 80Hz (low male) ~ 400Hz (high female)
+        const { min, max } = state.absoluteRange;
+        const center = (min + max) / 2;  // 240Hz
+        const range = (max - min) / 2;   // 160Hz
+
+        // Map to -1 ~ +1 range
+        pitchDeviation = (pitch - center) / range;
+      }
+
       const scaledDeviation = pitchDeviation * state.pitchSensitivity;
 
       if (pitch > 0 && volume > 0.05) {
@@ -1046,8 +1164,31 @@
       state.scaleX = clamp(state.scaleX, 0.5, 1.5);
       state.scaleY = clamp(state.scaleY, 0.5, 1.5);
 
-      // Tremor
-      state.tremorAmount = clamp(tremor * state.tremorSensitivity * 1.5, 0, 1);
+      // Pitch → Color (높으면 빨강, 낮으면 파랑, 기본 하양)
+      if (pitch > 0 && volume > 0.05) {
+        // -1 ~ +1 범위로 정규화
+        const colorDeviation = clamp(scaledDeviation, -1, 1);
+
+        if (colorDeviation > 0) {
+          // 높은 음 → 빨강 (G, B 감소)
+          state.color.r = 255;
+          state.color.g = Math.round(255 * (1 - colorDeviation));
+          state.color.b = Math.round(255 * (1 - colorDeviation));
+        } else {
+          // 낮은 음 → 파랑 (R, G 감소)
+          state.color.r = Math.round(255 * (1 + colorDeviation));
+          state.color.g = Math.round(255 * (1 + colorDeviation));
+          state.color.b = 255;
+        }
+      } else {
+        // 소리 없을 때 서서히 하양으로 복귀
+        state.color.r = Math.round(state.color.r * 0.95 + 255 * 0.05);
+        state.color.g = Math.round(state.color.g * 0.95 + 255 * 0.05);
+        state.color.b = Math.round(state.color.b * 0.95 + 255 * 0.05);
+      }
+
+      // Tremor (바이브레이션 감지 시에만 작동)
+      state.tremorAmount = clamp(tremor * state.tremorSensitivity, 0, 1);
 
       // Update manual sliders to reflect current values
       updateManualSlidersFromState();
@@ -1074,10 +1215,23 @@
       elements.glyphText.textContent = state.character;
     }
 
+    function updateColor() {
+      const { r, g, b } = state.color;
+      elements.glyphText.setAttribute('fill', `rgb(${r}, ${g}, ${b})`);
+    }
+
     function updateDebugDisplay() {
       elements.debugVolume.textContent = state.smoothedVolume.toFixed(2);
       elements.debugPitch.textContent = state.smoothedPitch.toFixed(0) + ' Hz';
       elements.debugTremor.textContent = state.smoothedTremor.toFixed(2);
+
+      // Show center based on mode
+      if (state.pitchMode === 'adaptive') {
+        const status = state.isCalibrated ? '' : ' (조정중)';
+        elements.debugCenter.textContent = state.adaptiveCenter.toFixed(0) + ' Hz' + status;
+      } else {
+        elements.debugCenter.textContent = '240 Hz (고정)';
+      }
     }
 
     function updateManualSlidersFromState() {
@@ -1122,13 +1276,14 @@
 
         state.smoothedTremor = state.smoothedTremor * s + state.rawTremor * (1 - s);
 
-        mapAudioToDeformation();
+        mapAudioToDeformation(deltaTime);
         updateDebugDisplay();
       }
 
       // Always update visuals
       updateWeight();
       updateScale();
+      updateColor();
 
       // Tremor animation
       if (state.tremorAmount > 0.01) {
@@ -1174,6 +1329,11 @@
         elements.micButton.classList.remove('error');
         elements.micButtonText.textContent = '마이크 시작';
         elements.audioDebug.style.display = 'none';
+
+        // Reset calibration for next session
+        state.calibrationTime = 0;
+        state.isCalibrated = false;
+        state.adaptiveCenter = 180;
 
         // Re-enable manual sliders
         Object.values(manualSliders).forEach(slider => {
@@ -1280,6 +1440,37 @@
         state.pitchCenter = parseFloat(e.target.value);
         document.getElementById('pitchCenter-value').textContent = state.pitchCenter.toFixed(0);
       });
+
+      // Pitch mode toggle
+      elements.modeAdaptive.addEventListener('click', () => {
+        switchPitchMode('adaptive');
+      });
+
+      elements.modeAbsolute.addEventListener('click', () => {
+        switchPitchMode('absolute');
+      });
+    }
+
+    function switchPitchMode(mode) {
+      state.pitchMode = mode;
+
+      // Reset calibration when switching to adaptive
+      if (mode === 'adaptive') {
+        state.calibrationTime = 0;
+        state.isCalibrated = false;
+        state.adaptiveCenter = 180;
+      }
+
+      // Update UI
+      elements.modeAdaptive.classList.toggle('active', mode === 'adaptive');
+      elements.modeAbsolute.classList.toggle('active', mode === 'absolute');
+
+      // Update description
+      if (mode === 'adaptive') {
+        elements.modeDescription.textContent = '처음 3초간 목소리를 분석하여 개인 기준점을 설정합니다.';
+      } else {
+        elements.modeDescription.textContent = '인간 음역대(80~400Hz)를 기준으로 절대적 위치를 표현합니다.';
+      }
     }
 
     /**
