@@ -478,6 +478,10 @@
       <span>Pitch</span>
     </div>
     <div class="debug-item">
+      <span class="debug-value" id="debug-confidence">0%</span>
+      <span>Voice</span>
+    </div>
+    <div class="debug-item">
       <span class="debug-value" id="debug-center">180 Hz</span>
       <span>Center</span>
     </div>
@@ -783,6 +787,7 @@
       rawVolume: 0,
       rawPitch: 0,
       rawTremor: 0,
+      voiceConfidence: 0,
 
       // Smoothed values
       smoothedVolume: 0,
@@ -880,6 +885,7 @@
       audioDebug: document.getElementById('audio-debug'),
       debugVolume: document.getElementById('debug-volume'),
       debugPitch: document.getElementById('debug-pitch'),
+      debugConfidence: document.getElementById('debug-confidence'),
       debugCenter: document.getElementById('debug-center'),
       debugTremor: document.getElementById('debug-tremor'),
       serverNotice: document.getElementById('server-notice'),
@@ -1092,12 +1098,20 @@
     }
 
     function detectPitch() {
-      if (!analyser || !dataArray) return 0;
+      if (!analyser || !dataArray) return { pitch: 0, confidence: 0 };
 
       analyser.getFloatTimeDomainData(dataArray);
 
       const sampleRate = audioContext.sampleRate;
       const bufferSize = dataArray.length;
+
+      // 신호 에너지 계산 (정규화용)
+      let energy = 0;
+      for (let i = 0; i < bufferSize; i++) {
+        energy += dataArray[i] * dataArray[i];
+      }
+
+      if (energy < 0.001) return { pitch: 0, confidence: 0 }; // 무음
 
       let maxCorrelation = 0;
       let foundPitch = 0;
@@ -1118,12 +1132,21 @@
         }
       }
 
-      const threshold = 0.01;
-      if (maxCorrelation > threshold * bufferSize) {
-        return foundPitch;
+      // 신뢰도 계산: 자기상관 강도 / 에너지 (0~1)
+      const confidence = Math.min(1, maxCorrelation / energy);
+
+      // 신뢰도가 낮으면 노이즈로 판단
+      const confidenceThreshold = 0.5;  // 50% 이상이어야 음성으로 인식
+      if (confidence < confidenceThreshold) {
+        return { pitch: 0, confidence: confidence };
       }
 
-      return 0;
+      // 주파수 범위 체크 (60~1000Hz)
+      if (foundPitch < 60 || foundPitch > 1000) {
+        return { pitch: 0, confidence: confidence };
+      }
+
+      return { pitch: foundPitch, confidence: confidence };
     }
 
     function calculateTremor(currentPitch) {
@@ -1297,6 +1320,7 @@
     function updateDebugDisplay() {
       elements.debugVolume.textContent = state.smoothedVolume.toFixed(2);
       elements.debugPitch.textContent = state.smoothedPitch.toFixed(0) + ' Hz';
+      elements.debugConfidence.textContent = Math.round(state.voiceConfidence * 100) + '%';
       elements.debugTremor.textContent = state.smoothedTremor.toFixed(2);
 
       // Show center based on mode
@@ -1338,7 +1362,9 @@
       // Audio analysis (only when listening)
       if (state.isListening && analyser) {
         state.rawVolume = calculateVolume();
-        state.rawPitch = detectPitch();
+        const pitchResult = detectPitch();
+        state.rawPitch = pitchResult.pitch;
+        state.voiceConfidence = pitchResult.confidence;
         state.rawTremor = calculateTremor(state.rawPitch);
 
         const s = state.smoothing;
