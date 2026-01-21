@@ -28,13 +28,15 @@
        MAIN GLYPH DISPLAY AREA
        ═══════════════════════════════════════ */
     .glyph-container {
-      flex: 1;
+      position: fixed;
+      top: 80px;
+      left: 0;
+      right: 0;
+      bottom: 150px; /* 컨트롤 패널 공간 확보 */
       display: flex;
       align-items: center;
       justify-content: center;
-      position: relative;
       pointer-events: none;
-      padding-bottom: 200px; /* 컨트롤 패널 공간 확보 */
     }
 
     .glyph-svg {
@@ -489,7 +491,7 @@
        GLYPH DISPLAY
        ═══════════════════════════════════════════════════════════════ -->
   <div class="glyph-container">
-    <svg class="glyph-svg" width="100%" height="100%" viewBox="-600 -450 1200 900" preserveAspectRatio="xMidYMid meet">
+    <svg class="glyph-svg" width="100%" height="100%" viewBox="-600 -400 1200 800" preserveAspectRatio="xMidYMid meet">
       <defs>
         <filter id="glyph-deform" x="-50%" y="-50%" width="200%" height="200%">
           <feTurbulence
