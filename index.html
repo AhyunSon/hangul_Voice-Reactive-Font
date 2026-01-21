@@ -34,6 +34,7 @@
       justify-content: center;
       position: relative;
       pointer-events: none;
+      padding-bottom: 200px; /* 컨트롤 패널 공간 확보 */
     }
 
     .glyph-svg {
@@ -43,7 +44,7 @@
 
     .glyph-text {
       font-family: 'Pretendard Variable', sans-serif;
-      font-size: 400px;
+      font-size: 320px;
       fill: #ffffff;
       dominant-baseline: central;
       text-anchor: middle;
@@ -384,6 +385,52 @@
       margin-top: 4px;
     }
 
+    /* Settings toggle button */
+    .settings-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 6px;
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 12px;
+      font-family: 'Pretendard Variable', sans-serif;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 16px;
+    }
+
+    .settings-toggle:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+    }
+
+    .settings-toggle.active {
+      background: rgba(255, 255, 255, 0.2);
+      color: #ffffff;
+    }
+
+    .settings-toggle svg {
+      width: 16px;
+      height: 16px;
+      transition: transform 0.3s;
+    }
+
+    .settings-toggle.active svg {
+      transform: rotate(90deg);
+    }
+
+    /* Hidden settings sections */
+    .settings-content {
+      display: none;
+    }
+
+    .settings-content.visible {
+      display: block;
+    }
+
   </style>
 </head>
 <body>
@@ -442,7 +489,7 @@
        GLYPH DISPLAY
        ═══════════════════════════════════════════════════════════════ -->
   <div class="glyph-container">
-    <svg class="glyph-svg" width="100%" height="100%" viewBox="-400 -300 800 600">
+    <svg class="glyph-svg" width="100%" height="100%" viewBox="-600 -450 1200 900" preserveAspectRatio="xMidYMid meet">
       <defs>
         <filter id="glyph-deform" x="-50%" y="-50%" width="200%" height="200%">
           <feTurbulence
@@ -490,111 +537,8 @@
        ═══════════════════════════════════════════════════════════════ -->
   <div class="control-panel">
 
-    <!-- MANUAL DEFORMATION CONTROLS -->
+    <!-- PITCH MODE SELECTOR (항상 표시) -->
     <div class="panel-section">
-      <div class="section-title">수동 변형 조절 (Manual Controls)</div>
-      <div class="controls-grid">
-
-        <!-- Character Selection -->
-        <div class="control-group">
-          <label class="control-label">
-            <span>Character</span>
-          </label>
-          <input
-            type="text"
-            id="char-input"
-            class="char-input"
-            value="아"
-            maxlength="4"
-          />
-        </div>
-
-        <!-- Weight -->
-        <div class="control-group">
-          <label class="control-label">
-            <span>Weight</span>
-            <span class="control-value" id="weight-value">400</span>
-          </label>
-          <input
-            type="range"
-            id="weight"
-            min="100"
-            max="900"
-            value="400"
-            step="1"
-          />
-        </div>
-
-        <!-- Scale X -->
-        <div class="control-group">
-          <label class="control-label">
-            <span>Scale X (평)</span>
-            <span class="control-value" id="scaleX-value">1.00</span>
-          </label>
-          <input
-            type="range"
-            id="scaleX"
-            min="0.5"
-            max="1.5"
-            value="1"
-            step="0.01"
-          />
-        </div>
-
-        <!-- Scale Y -->
-        <div class="control-group">
-          <label class="control-label">
-            <span>Scale Y (장)</span>
-            <span class="control-value" id="scaleY-value">1.00</span>
-          </label>
-          <input
-            type="range"
-            id="scaleY"
-            min="0.5"
-            max="1.5"
-            value="1"
-            step="0.01"
-          />
-        </div>
-
-        <!-- Tremor Amount -->
-        <div class="control-group">
-          <label class="control-label">
-            <span>Tremor Amount</span>
-            <span class="control-value" id="tremorAmount-value">0.00</span>
-          </label>
-          <input
-            type="range"
-            id="tremorAmount"
-            min="0"
-            max="1"
-            value="0"
-            step="0.01"
-          />
-        </div>
-
-        <!-- Tremor Speed -->
-        <div class="control-group">
-          <label class="control-label">
-            <span>Tremor Speed</span>
-            <span class="control-value" id="tremorSpeed-value">1.50</span>
-          </label>
-          <input
-            type="range"
-            id="tremorSpeed"
-            min="0"
-            max="3"
-            value="1.5"
-            step="0.01"
-          />
-        </div>
-
-      </div>
-    </div>
-
-    <!-- PITCH MODE SELECTOR -->
-    <div class="panel-section">
-      <div class="section-title">피치 모드 (Pitch Mode)</div>
       <div class="control-group">
         <div class="mode-selector">
           <button class="mode-btn active" id="mode-adaptive" data-mode="adaptive">
@@ -610,92 +554,208 @@
       </div>
     </div>
 
-    <!-- AUDIO SETTINGS -->
-    <div class="panel-section">
-      <div class="section-title">음성 반응 설정 (Audio Settings)</div>
-      <div class="controls-grid">
+    <!-- SETTINGS TOGGLE BUTTON -->
+    <button class="settings-toggle" id="settings-toggle">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
+      </svg>
+      <span>세부 설정</span>
+    </button>
 
-        <!-- Volume Sensitivity -->
-        <div class="control-group">
-          <label class="control-label">
-            <span>Volume Sens.</span>
-            <span class="control-value" id="volSens-value">1.50</span>
-          </label>
-          <input
-            type="range"
-            id="volSens"
-            min="0.5"
-            max="5"
-            value="1.5"
-            step="0.1"
-          />
+    <!-- HIDDEN SETTINGS CONTENT -->
+    <div class="settings-content" id="settings-content">
+
+      <!-- MANUAL DEFORMATION CONTROLS -->
+      <div class="panel-section">
+        <div class="section-title">수동 변형 조절 (Manual Controls)</div>
+        <div class="controls-grid">
+
+          <!-- Character Selection -->
+          <div class="control-group">
+            <label class="control-label">
+              <span>Character</span>
+            </label>
+            <input
+              type="text"
+              id="char-input"
+              class="char-input"
+              value="아"
+              maxlength="4"
+            />
+          </div>
+
+          <!-- Weight -->
+          <div class="control-group">
+            <label class="control-label">
+              <span>Weight</span>
+              <span class="control-value" id="weight-value">400</span>
+            </label>
+            <input
+              type="range"
+              id="weight"
+              min="100"
+              max="900"
+              value="400"
+              step="1"
+            />
+          </div>
+
+          <!-- Scale X -->
+          <div class="control-group">
+            <label class="control-label">
+              <span>Scale X (평)</span>
+              <span class="control-value" id="scaleX-value">1.00</span>
+            </label>
+            <input
+              type="range"
+              id="scaleX"
+              min="0.5"
+              max="1.5"
+              value="1"
+              step="0.01"
+            />
+          </div>
+
+          <!-- Scale Y -->
+          <div class="control-group">
+            <label class="control-label">
+              <span>Scale Y (장)</span>
+              <span class="control-value" id="scaleY-value">1.00</span>
+            </label>
+            <input
+              type="range"
+              id="scaleY"
+              min="0.5"
+              max="1.5"
+              value="1"
+              step="0.01"
+            />
+          </div>
+
+          <!-- Tremor Amount -->
+          <div class="control-group">
+            <label class="control-label">
+              <span>Tremor Amount</span>
+              <span class="control-value" id="tremorAmount-value">0.00</span>
+            </label>
+            <input
+              type="range"
+              id="tremorAmount"
+              min="0"
+              max="1"
+              value="0"
+              step="0.01"
+            />
+          </div>
+
+          <!-- Tremor Speed -->
+          <div class="control-group">
+            <label class="control-label">
+              <span>Tremor Speed</span>
+              <span class="control-value" id="tremorSpeed-value">1.50</span>
+            </label>
+            <input
+              type="range"
+              id="tremorSpeed"
+              min="0"
+              max="3"
+              value="1.5"
+              step="0.01"
+            />
+          </div>
+
         </div>
-
-        <!-- Pitch Sensitivity -->
-        <div class="control-group">
-          <label class="control-label">
-            <span>Pitch Sens.</span>
-            <span class="control-value" id="pitchSens-value">1.00</span>
-          </label>
-          <input
-            type="range"
-            id="pitchSens"
-            min="0.5"
-            max="3"
-            value="1"
-            step="0.1"
-          />
-        </div>
-
-        <!-- Tremor Sensitivity -->
-        <div class="control-group">
-          <label class="control-label">
-            <span>Tremor Sens.</span>
-            <span class="control-value" id="tremorSens-value">1.00</span>
-          </label>
-          <input
-            type="range"
-            id="tremorSens"
-            min="0.5"
-            max="3"
-            value="1"
-            step="0.1"
-          />
-        </div>
-
-        <!-- Smoothing -->
-        <div class="control-group">
-          <label class="control-label">
-            <span>Smoothing</span>
-            <span class="control-value" id="smoothing-value">0.80</span>
-          </label>
-          <input
-            type="range"
-            id="smoothing"
-            min="0.5"
-            max="0.98"
-            value="0.80"
-            step="0.01"
-          />
-        </div>
-
-        <!-- Pitch Center -->
-        <div class="control-group">
-          <label class="control-label">
-            <span>Pitch Center (Hz)</span>
-            <span class="control-value" id="pitchCenter-value">180</span>
-          </label>
-          <input
-            type="range"
-            id="pitchCenter"
-            min="80"
-            max="400"
-            value="180"
-            step="10"
-          />
-        </div>
-
       </div>
+
+      <!-- AUDIO SETTINGS -->
+      <div class="panel-section">
+        <div class="section-title">음성 반응 설정 (Audio Settings)</div>
+        <div class="controls-grid">
+
+          <!-- Volume Sensitivity -->
+          <div class="control-group">
+            <label class="control-label">
+              <span>Volume Sens.</span>
+              <span class="control-value" id="volSens-value">1.50</span>
+            </label>
+            <input
+              type="range"
+              id="volSens"
+              min="0.5"
+              max="5"
+              value="1.5"
+              step="0.1"
+            />
+          </div>
+
+          <!-- Pitch Sensitivity -->
+          <div class="control-group">
+            <label class="control-label">
+              <span>Pitch Sens.</span>
+              <span class="control-value" id="pitchSens-value">1.00</span>
+            </label>
+            <input
+              type="range"
+              id="pitchSens"
+              min="0.5"
+              max="3"
+              value="1"
+              step="0.1"
+            />
+          </div>
+
+          <!-- Tremor Sensitivity -->
+          <div class="control-group">
+            <label class="control-label">
+              <span>Tremor Sens.</span>
+              <span class="control-value" id="tremorSens-value">1.00</span>
+            </label>
+            <input
+              type="range"
+              id="tremorSens"
+              min="0.5"
+              max="3"
+              value="1"
+              step="0.1"
+            />
+          </div>
+
+          <!-- Smoothing -->
+          <div class="control-group">
+            <label class="control-label">
+              <span>Smoothing</span>
+              <span class="control-value" id="smoothing-value">0.80</span>
+            </label>
+            <input
+              type="range"
+              id="smoothing"
+              min="0.5"
+              max="0.98"
+              value="0.80"
+              step="0.01"
+            />
+          </div>
+
+          <!-- Pitch Center -->
+          <div class="control-group">
+            <label class="control-label">
+              <span>Pitch Center (Hz)</span>
+              <span class="control-value" id="pitchCenter-value">180</span>
+            </label>
+            <input
+              type="range"
+              id="pitchCenter"
+              min="80"
+              max="400"
+              value="180"
+              step="10"
+            />
+          </div>
+
+        </div>
+      </div>
+
     </div>
 
   </div>
@@ -727,8 +787,9 @@
       smoothedPitch: 180,
       smoothedTremor: 0,
 
-      // Color (RGB)
+      // Color (RGB) and opacity
       color: { r: 255, g: 255, b: 255 },
+      opacity: 0.3,
 
       // Settings
       volumeSensitivity: 1.5,
@@ -823,6 +884,8 @@
       modeAdaptive: document.getElementById('mode-adaptive'),
       modeAbsolute: document.getElementById('mode-absolute'),
       modeDescription: document.getElementById('mode-description'),
+      settingsToggle: document.getElementById('settings-toggle'),
+      settingsContent: document.getElementById('settings-content'),
     };
 
     // Manual control sliders
@@ -1113,6 +1176,14 @@
       );
       state.weight = clamp(weightFromVolume, 100, 900);
 
+      // Volume → Opacity (작은 소리 = 투명, 큰 소리 = 불투명)
+      const opacityFromVolume = mapRange(
+        volume * state.volumeSensitivity,
+        0, 1,
+        0.2, 1
+      );
+      state.opacity = clamp(opacityFromVolume, 0.2, 1);
+
       // Calculate pitch deviation based on mode
       let pitchDeviation = 0;
 
@@ -1217,7 +1288,8 @@
 
     function updateColor() {
       const { r, g, b } = state.color;
-      elements.glyphText.setAttribute('fill', `rgb(${r}, ${g}, ${b})`);
+      const opacity = state.opacity;
+      elements.glyphText.setAttribute('fill', `rgba(${r}, ${g}, ${b}, ${opacity.toFixed(2)})`);
     }
 
     function updateDebugDisplay() {
@@ -1448,6 +1520,12 @@
 
       elements.modeAbsolute.addEventListener('click', () => {
         switchPitchMode('absolute');
+      });
+
+      // Settings toggle
+      elements.settingsToggle.addEventListener('click', () => {
+        elements.settingsToggle.classList.toggle('active');
+        elements.settingsContent.classList.toggle('visible');
       });
     }
 
