@@ -811,8 +811,8 @@
       calibrationTime: 0,
       isCalibrated: false,
 
-      // Absolute mode range (인간 음역대)
-      absoluteRange: { min: 80, max: 400 },
+      // Absolute mode range (인간 음역대 - 노래 포함)
+      absoluteRange: { min: 60, max: 1000 },
     };
 
     /**
@@ -1102,8 +1102,8 @@
       let maxCorrelation = 0;
       let foundPitch = 0;
 
-      const minPeriod = Math.floor(sampleRate / 500);
-      const maxPeriod = Math.floor(sampleRate / 80);
+      const minPeriod = Math.floor(sampleRate / 1000);  // 최대 1000Hz까지 감지
+      const maxPeriod = Math.floor(sampleRate / 60);   // 최소 60Hz까지 감지
 
       for (let lag = minPeriod; lag < maxPeriod && lag < bufferSize / 2; lag++) {
         let correlation = 0;
@@ -1304,7 +1304,7 @@
         const status = state.isCalibrated ? '' : ' (조정중)';
         elements.debugCenter.textContent = state.adaptiveCenter.toFixed(0) + ' Hz' + status;
       } else {
-        elements.debugCenter.textContent = '240 Hz (고정)';
+        elements.debugCenter.textContent = '530 Hz (고정)';
       }
     }
 
@@ -1549,7 +1549,7 @@
       if (mode === 'adaptive') {
         elements.modeDescription.textContent = '처음 3초간 목소리를 분석하여 개인 기준점을 설정합니다.';
       } else {
-        elements.modeDescription.textContent = '인간 음역대(80~400Hz)를 기준으로 절대적 위치를 표현합니다.';
+        elements.modeDescription.textContent = '인간 음역대(60~1000Hz)를 기준으로 절대적 위치를 표현합니다.';
       }
     }
 
